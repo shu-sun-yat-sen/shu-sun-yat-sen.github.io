@@ -13,7 +13,7 @@ redirect_from:
 - 院校：计算机学院（软件学院）
 - 专业：计算机科学与技术（系统结构专业）
 
-[opencv学习笔记](https://github.com/shu-sun-yat-sen/shu-sun-yat-sen.github.io/blob/master/%E6%9C%BA%E5%99%A8%E4%BA%BA%E7%AC%94%E8%AE%B0/opencv.md)
+[opencv学习笔记(进度7-2)](https://github.com/shu-sun-yat-sen/shu-sun-yat-sen.github.io/blob/master/%E6%9C%BA%E5%99%A8%E4%BA%BA%E7%AC%94%E8%AE%B0/opencv.md)
 
 
 [python多线程学习笔记](https://github.com/shu-sun-yat-sen/shu-sun-yat-sen.github.io/blob/master/%E6%9C%BA%E5%99%A8%E4%BA%BA%E7%AC%94%E8%AE%B0/python%E5%A4%9A%E7%BA%BF%E7%A8%8B.md)
