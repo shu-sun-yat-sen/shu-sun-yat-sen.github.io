@@ -24,6 +24,7 @@ redirect_from:
 
 练习题效果图
 ![img](../images/img1.png)
+
 [html学习笔记](https://github.com/shu-sun-yat-sen/shu-sun-yat-sen.github.io/blob/master/web/html.md)
 [css学习笔记](https://github.com/shu-sun-yat-sen/shu-sun-yat-sen.github.io/blob/master/web/css.md)
 [javascript学习笔记](https://github.com/shu-sun-yat-sen/shu-sun-yat-sen.github.io/blob/master/web/java%20script.md)
