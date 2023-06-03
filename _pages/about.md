@@ -1,4 +1,4 @@
- ---
+---
 permalink: /
 title: "academicpages is a ready-to-fork GitHub Pages template for academic personal websites"
 excerpt: "About me"
@@ -7,6 +7,7 @@ redirect_from:
   - /about/
   - /about.html
 ---
+
  # 舒春节的个人主页
 - 邮箱：shuchj@mail2.sysu.edu.cn
 - 学校：中山大学
