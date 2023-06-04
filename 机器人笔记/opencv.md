@@ -1,4 +1,3 @@
-# 目前进度7-2
 - [opencvgui特性](#opencvgui特性)
   - [2\_1\_图像入门](#2_1_图像入门)
     - [读取图像](#读取图像)
@@ -153,10 +152,13 @@
   - [8\_4\_使用OCR手写数据集运行SVM](#8_4_使用ocr手写数据集运行svm)
   - [8\_5\_理解K均值聚类](#8_5_理解k均值聚类)
   - [8\_6\_OpenCV中的K均值](#8_6_opencv中的k均值)
+    - [颜色量化](#颜色量化)
 - [计算摄影学](#计算摄影学)
   - [9\_1\_图像去噪](#9_1_图像去噪)
   - [9\_2\_图像修补](#9_2_图像修补)
   - [9\_3\_高动态范围](#9_3_高动态范围)
+    - [曝光序列HDR](#曝光序列hdr)
+    - [估计相机响应函数](#估计相机响应函数)
 - [目标检测](#目标检测)
   - [10\_1\_级联分类器](#10_1_级联分类器)
   - [10\_2\_级联分类器训练](#10_2_级联分类器训练)
@@ -1453,19 +1455,197 @@ error = cv.norm(imgpoints[i], imgpoints2, cv.NORM_L2)/len(imgpoints2)
 mean_error += error
 ```
 ## 7_2_姿态估计
+在图像平面上找到与3D空间中(3,0,0),(0,3,0),
+(0,0,3)中的每一个相对应的点。一旦获得它们，就可以使用draw()函数从第一个角到这些点中的每个点绘制线条。
+```
+gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+ret, corners = cv.findChessboardCorners(gray, (7,6),None)
+if ret == True:
+    corners2 = cv.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+    #找到旋转和平移矢量。
+    ret,rvecs, tvecs = cv.solvePnP(objp, corners2, mtx, dist)
+    #将3D点投影到图像平面
+    imgpts, jac = cv.projectPoints(axis, rvecs, tvecs, mtx, dist)
+    img = draw(img,corners2,imgpts)
+    #绘制corners2 到imggpts中3个点的线
+```
 ## 7_3_对极几何
+- 基础矩阵(F):包含有关平移和旋转的信息，这些信息在全局坐标中描述了第二个摄像头相对于第一个摄像头的位置
+- 基本矩阵(E):基本矩阵除包含有关两个摄像头的内在信息之外，还包含与基本矩阵相同的信息.
+```
+#使用SIFT查找关键点和描述符得到des1,des2
+#使用knnmatch匹配点
+flann = cv.FlannBasedMatcher(index_params,search_params)
+matches = flann.knnMatch(des1,des2,k=2)
+good = []
+pts1 = []
+pts2 = []
+#根据Lowe的论文进行比率测试
+for i,(m,n) in enumerate(matches):
+      if m.distance < 0.8*n.distance:
+          good.append(m)
+          pts2.append(kp2[m.trainIdx].pt)
+          pts1.append(kp1[m.queryIdx].pt)
+pts1 = np.int32(pts1)
+pts2 = np.int32(pts2)
+F, mask = cv.findFundamentalMat(pts1,pts2,cv.FM_LMEDS)
+#我们只选择内点
+pts1 = pts1[mask.ravel()==1]
+pts2 = pts2[mask.ravel()==1]
+lines1 = cv.computeCorrespondEpilines(pts2.reshape(-1,1,2), 2,F)
+lines1 = lines1.reshape(-1,3)
+lines2 = cv.computeCorrespondEpilines(pts1.reshape(-1,1,2), 1,F)
+lines2 = lines2.reshape(-1,3)
+```
 ## 7_4_立体图像的深度图
+```
+imgL = cv.imread('tsukuba_l.png',0)
+imgR = cv.imread('tsukuba_r.png',0)
+stereo = cv.StereoBM_create(numDisparities=16, blockSize=15)
+disparity = stereo.compute(imgL,imgR)
+plt.imshow(disparity,'gray')
+```
 # 机器学习
 ## 8_1_理解KNN
+```
+knn = cv.ml.KNearest_create()
+knn.train(trainData, cv.ml.ROW_SAMPLE, responses)
+ret, results, neighbours ,dist = knn.findNearest(newcomer, 3)
+```
 ## 8_2_使用OCR手写数据集运行KNN
+```
+knn = cv.ml.KNearest_create()
+knn.train(train, cv.ml.ROW_SAMPLE, train_labels)
+ret,result,neighbours,dist = knn.findNearest(test,k=5)
+```
 ## 8_3_理解SVM
 ## 8_4_使用OCR手写数据集运行SVM
+```
+trainData = np.float32(hogdata).reshape(-1,64)
+responses = np.repeat(np.arange(10),250)[:,np.newaxis]
+svm = cv.ml.SVM_create()
+svm.setKernel(cv.ml.SVM_LINEAR)
+svm.setType(cv.ml.SVM_C_SVC)
+svm.setC(2.67)
+svm.setGamma(5.383)
+svm.train(trainData, cv.ml.ROW_SAMPLE, responses)
+result = svm.predict(testData)[1]
+mask = result==responses
+correct = np.count_nonzero(mask)
+```
+梯度直方图(HOG)
 ## 8_5_理解K均值聚类
 ## 8_6_OpenCV中的K均值
+cv.kmeans()
+- sample：np.float32数组
+- nclusters(K)：所需的簇数
+- criteria：迭代终止条件。 (type,max_iter,epsilon) ： 
+  - 终止条件的类型。它具有3个标志，如下所示：
+    - cv.TERM_CRITERIA_EPS达到精度epsilon停止
+    - cv.TERM_CRITERIA_MAX_ITER指定迭代次数max_iter
+    - cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER满足其中一个条件
+  - max_iter-一个整数，指定最大迭代次数。 
+  - epsilon-要求的精度 
+- attempts：该标志用于指定使用不同的初始标签执行算法的次数。该算法返回产生最佳紧密度的标签。该紧凑性作为输出返回。 
+- flags：此标志用于指定初始中心的获取方式。通常，为此使用两个标志：cv.KMEANS_PP_CENTERS和cv.KMEANS_RANDOM_CENTERS。
+
+输出
+- 紧凑度：它是每个点到其相应中心的平方距离的总和
+- 标签数组
+- 中心
+```
+criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+flags = cv.KMEANS_RANDOM_CENTERS
+compactness,labels,centers = cv.kmeans(z,2,None,criteria,10,flags)
+```
+### 颜色量化
+对图片中像素点颜色进行kmean，对原图片中像素用最近的kmean中心点替代
 # 计算摄影学
 ## 9_1_图像去噪
+- 通常认为噪声是零均值的随机变量。
+- cv.fastNlMeansDenoising处理灰度图像
+- cv.fastNlMeansDenoisingColored处理彩色图像
+- cv.fastNlMeansDenoisingMulti灰度图像序列
+- cv.fastNlMeansDenoisingColoredMulti彩色图像序列
+
+一些参数
+- h：滤波器强度(10)
+- hForColorComponents仅用于彩色图像,通常与h
+相同
+-  templateWindowSize:奇数(7)
+-   searchWindowSize:奇数(21)
+```
+cv.fastNlMeansDenoisingColored(img,None,10,10,7,21)
+```
+```
+#对第三帧进行降噪
+cv.fastNlMeansDenoisingMulti(noisy, 2, 5, None, 4, 7, 35)
+```
 ## 9_2_图像修补
+cv.inpaint：
+
+**cv.INPAINT_TELEA**和**cv.INPAINT_NS**两种算法
+```
+cv.inpaint(img,mask,3,cv.INPAINT_TELEA)
+```
 ## 9_3_高动态范围
+- 高动态范围成像（HDRI或HDR）是一种用于成像和摄影的技术，可以比标准数字成像或摄影技术
+重现更大的动态亮度范围.
+### 曝光序列HDR
+```
+#1.曝光图像和曝光事件列表
+#2.合成HDR
+merge_debevec = cv.createMergeDebevec()
+hdr_debevec = merge_debevec.process(img_list, times=exposure_times.copy())
+merge_robertson = cv.createMergeRobertson()
+hdr_robertson = merge_robertson.process(img_list, times=exposure_times.copy())
+#3.色调图HDR图像
+tonemap1 = cv.createTonemap(gamma=2.2)
+res_debevec = tonemap1.process(hdr_debevec.copy())
+#4. 转为8-bit
+np.clip(res_debevec*255, 0, 255).astype('uint8')
+```
+```
+使用Mertens融合曝光,不需要曝光时间
+merge_mertens = cv.createMergeMertens()
+res_mertens = merge_mertens.process(img_list)
+```
+### 估计相机响应函数
+摄像机响应功能（CRF）使我们可以将场景辐射度与测量强度值联系起来
+```
+#估计相机响应函数(CRF)
+cal_debevec = cv.createCalibrateDebevec()
+crf_debevec = cal_debevec.process(img_list, times=exposure_times)w
+```
+结果可以用于HDR
+```
+hdr_robertson = merge_robertson.process(img_list, times=exposure_times.copy(),
+response=crf_robertson.copy())
+```
 # 目标检测
 ## 10_1_级联分类器
+Haar特征的级联分类器
+```
+#加载分类器
+face_cascade = cv.CascadeClassifier()
+eyes_cascade = cv.CascadeClassifier()
+face_cascade.load(cv.samples.findFile(face_cascade_name))
+eyes_cascade.load(cv.samples.findFile(eyes_cascade_name))
+#图像
+frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+frame_gray = cv.equalizeHist(frame_gray)
+ #-- 检测面部
+faces = face_cascade.detectMultiScale(frame_gray)
+for (x,y,w,h) in faces:
+  center = (x + w//2, y + h//2)
+  frame = cv.ellipse(frame, center, (w//2, h//2), 0, 0, 360, (255, 0, 255),
+4)
+  faceROI = frame_gray[y:y+h,x:x+w]
+#-- 在每张面部上检测眼睛
+    eyes = eyes_cascade.detectMultiScale(faceROI)
+    for (x2,y2,w2,h2) in eyes:
+      eye_center = (x + x2 + w2//2, y + y2 + h2//2)
+      radius = int(round((w2 + h2)*0.25))
+      frame = cv.circle(frame, eye_center, radius, (255, 0, 0 ), 4)
+```
 ## 10_2_级联分类器训练
